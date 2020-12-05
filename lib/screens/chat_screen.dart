@@ -78,7 +78,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   if (!snapshots.hasData) {
                     return CircularProgressIndicator();
                   } else {
-                    List<Widget> messageWidgets = [];
+                    List<Text> messageWidgets = [];
                     final messages = snapshots.data.docs;
                     for (var message in messages) {
                       final messageText = message.data()['text'];
