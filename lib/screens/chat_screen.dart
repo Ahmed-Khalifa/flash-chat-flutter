@@ -6,7 +6,6 @@ import 'package:flash_chat/constants.dart';
 class ChatScreen extends StatefulWidget {
   static const String id = 'chat_screen';
 
-
   @override
   _ChatScreenState createState() => _ChatScreenState();
 }
@@ -15,19 +14,26 @@ class _ChatScreenState extends State<ChatScreen> {
   final _firestore = FirebaseFirestore.instance;
   final _auth = FirebaseAuth.instance;
   User LoggedInUser;
-  String messageText='';
+  String messageText;
   final myController = TextEditingController();
 
   void getCurrentUser() async {
-    try{
+    try {
       final user = await _auth.currentUser;
       if (user != null) {
         LoggedInUser = user;
         print(user.email);
       }
-    }
-    catch(e){
+    } catch (e) {
       print(e);
+    }
+  }
+
+  void messageStream() async {
+    await for (var snapshots in _firestore.collection('messages').snapshots()) {
+      for (var message in snapshots.docs) {
+        print(message.data());
+      }
     }
   }
 
@@ -35,6 +41,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     getCurrentUser();
+    messageStream();
   }
 
   @override
@@ -65,6 +72,26 @@ class _ChatScreenState extends State<ChatScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
+            StreamBuilder<QuerySnapshot>(
+                stream: _firestore.collection('messages').snapshots(),
+                builder: (context, snapshots) {
+                  if (!snapshots.hasData) {
+                    return CircularProgressIndicator();
+                  } else {
+                    List<Widget> messageWidgets = [];
+                    final messages = snapshots.data.docs;
+                    for (var message in messages) {
+                      final messageText = message.data()['text'];
+                      final messageSender = message.data()['sender'];
+                      Text messageWidget =
+                          Text('$messageText sent from: $messageSender');
+                      messageWidgets.add(messageWidget);
+                    }
+                    return Column(
+                      children: messageWidgets,
+                    );
+                  }
+                }),
             Container(
               decoration: kMessageContainerDecoration,
               child: Row(
@@ -74,25 +101,22 @@ class _ChatScreenState extends State<ChatScreen> {
                     child: TextField(
                       controller: myController,
                       onChanged: (value) {
-                       messageText = value;
+                        messageText = value;
                       },
-
                       decoration: kMessageTextFieldDecoration,
                     ),
                   ),
                   FlatButton(
                     onPressed: () async {
-                      try{
+                      try {
                         await _firestore.collection('messages').add({
                           'sender': LoggedInUser.email,
-                          'text' : messageText
+                          'text': messageText
                         });
                         myController.clear();
                       } catch (e) {
                         print(e);
                       }
-
-
                     },
                     child: Text(
                       'Send',
